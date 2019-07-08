@@ -1,0 +1,68 @@
+Nama  : Agung Maulana
+Kelas : TI412
+UAS	  : Administrasi Basis Data
+
+=========================================================================================================================================================
+1.
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+DELIMITER $$
+CREATE PROCEDURE isi_data(IN lokasi VARCHAR(20), IN barang VARCHAR(20))
+BEGIN
+	DECLARE brgnya INT;
+    DECLARE loknya INT;
+	SELECT kode INTO brgnya FROM referensi WHERE tag = 'Barang' AND nama = barang;
+    SELECT kode INTO loknya FROM referensi WHERE tag = 'Lokasi' AND nama = lokasi;
+    INSERT INTO data SET lokasi = loknya, barang = brgnya;
+END
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+2.
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+CREATE VIEW tampil_data AS
+SELECT data.id, brg.nama as barang, lok.nama as lokasi 
+FROM 
+(data INNER JOIN referensi as brg on data.barang = brg.kode) 
+INNER JOIN referensi as lok on data.lokasi = lok.kode 
+WHERE 
+lok.tag = 'Lokasi' 
+AND 
+brg.tag = 'Barang'
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+3.
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+CREATE TRIGGER `add_data` AFTER INSERT ON `data` FOR EACH ROW BEGIN
+	INSERT INTO data_audit (id_data, barang_after,lokasi_after, waktu, status)
+    VALUES (NEW.id, NEW.barang, NEW.lokasi, NOW(), 'ADD');
+END
+
+CREATE TRIGGER `delete_data` BEFORE DELETE ON `data` FOR EACH ROW BEGIN
+	INSERT INTO data_audit
+    (id_data, barang_before, lokasi_before, waktu, status)
+    VALUES
+    (OLD.id, OLD.barang, OLD.lokasi, NOW(), 'DELETE');
+END
+
+CREATE TRIGGER `update_data_before` BEFORE UPDATE ON `data` FOR EACH ROW BEGIN
+	INSERT INTO data_audit
+    (id_data, barang_before, lokasi_before, waktu, status)
+    VALUES
+    (OLD.id, OLD.barang, OLD.lokasi, NOW(), 'UPDATE');
+END
+
+CREATE TRIGGER `udate_data_after` AFTER UPDATE ON `data` FOR EACH ROW BEGIN
+	DECLARE up INT;
+    SELECT id INTO up FROM data_audit ORDER BY id DESC LIMIT 1;
+    UPDATE data_audit SET 
+    barang_after = NEW.barang,
+    lokasi_after = NEW.lokasi
+    WHERE id = up;
+END
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+4.
+
+CREATE VIEW view_audit as SELECT  status, COUNT(status) FROM data_audit GROUP BY status
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------
